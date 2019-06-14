@@ -23,9 +23,9 @@ from tensorflow_probability import distributions as tfd
 from planet import tools
 
 
-def encoder(obs):
+def encoder(obs, trainable=True):
   """Extract deterministic features from an observation."""
-  kwargs = dict(strides=2, activation=tf.nn.relu)
+  kwargs = dict(strides=2, activation=tf.nn.relu, trainable=trainable)
   hidden = tf.reshape(obs['image'], [-1] + obs['image'].shape[2:].as_list())
   hidden = tf.layers.conv2d(hidden, 32, 4, **kwargs)
   hidden = tf.layers.conv2d(hidden, 64, 4, **kwargs)

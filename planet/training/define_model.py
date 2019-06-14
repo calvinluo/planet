@@ -48,14 +48,15 @@ def define_model(data, trainer, config):
   kwargs = dict()
   encoder = tf.make_template(
       'encoder', config.encoder, create_scope_now_=True, **kwargs)
+  # Embed observations and unroll model.
+  embedded = encoder(obs)
+  obs['embedding'] = embedded
   heads = {}
   for key, head in config.heads.items():
     name = 'head_{}'.format(key)
     kwargs = dict(data_shape=obs[key].shape[2:].as_list())
     heads[key] = tf.make_template(name, head, create_scope_now_=True, **kwargs)
 
-  # Embed observations and unroll model.
-  embedded = encoder(obs)
   # Separate overshooting and zero step observations because computing
   # overshooting targets for images would be expensive.
   zero_step_obs = {}
@@ -77,7 +78,7 @@ def define_model(data, trainer, config):
   zs_target = {key: value[:, :, None] for key, value in zero_step_obs.items()}
   zero_step_losses = utility.compute_losses(
       config.zero_step_losses, cell, heads, step, zs_target, zs_prior,
-      zs_posterior, zs_mask, config.free_nats, debug=config.debug)
+      zs_posterior, zs_mask, config, config.free_nats, debug=config.debug)
   losses += [
       loss * config.zero_step_losses[name] for name, loss in
       zero_step_losses.items()]
@@ -92,7 +93,7 @@ def define_model(data, trainer, config):
       os_posterior = tools.nested.map(tf.stop_gradient, os_posterior)
     overshooting_losses = utility.compute_losses(
         config.overshooting_losses, cell, heads, step, os_target, os_prior,
-        os_posterior, os_mask, config.free_nats, debug=config.debug)
+        os_posterior, os_mask, config, config.free_nats, debug=config.debug)
     losses += [
         loss * config.overshooting_losses[name] for name, loss in
         overshooting_losses.items()]

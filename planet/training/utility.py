@@ -182,10 +182,15 @@ def train(model_fn, datasets, logdir, config):
 
 def compute_losses(
     loss_scales, cell, heads, step, target, prior, posterior, mask,
-    free_nats=None, debug=False):
-  features = cell.features_from_state(posterior)
+    config, free_nats=None, debug=False):
+  raw_features = cell.features_from_state(posterior)
   losses = {}
   for key, scale in loss_scales.items():
+    # Features tensor is of shape (batch, time, os_distance, features).
+    if key not in config.gradient_heads:
+        features =  tf.stop_gradient(raw_features)
+    else:
+        features = raw_features
     # Skip losses with zero or None scale to save computation.
     if not scale:
       continue

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""Train a Deep Planning Network agent.
+"""Train a Deep Planning Network agent.
 
 Full training run:
 
@@ -61,8 +61,10 @@ def process(logdir, args):
   config = tools.AttrDict()
   with config.unlocked:
     config = getattr(configs, args.config)(config, args.params)
+  # Collects the initial episodes, storing them in the log directory as npz arrays
   training.utility.collect_initial_episodes(config)
   tf.reset_default_graph()
+  # preprocess the dataset - chunk it, condense image, etc.
   dataset = tools.numpy_episodes(
       config.train_dir, config.test_dir, config.batch_shape,
       loader=config.data_loader,

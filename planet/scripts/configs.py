@@ -70,9 +70,13 @@ def _data_processing(config, params):
 
 def _model_components(config, params):
   network = getattr(networks, params.get('network', 'conv_ha'))
-  config.encoder = network.encoder
-  config.decoder = network.decoder
-  config.heads = tools.AttrDict(image=config.decoder)
+  config.encoder = functools.partial(
+      network.encoder, trainable=params.get('trainable_encoder', True))
+  config.heads = tools.AttrDict(_unlocked=True)
+  config.heads.image = network.decoder
+  if params.get('embedding_head', False):
+    config.heads.embedding = networks.feed_forward
+    config.zero_step_losses.embedding = 1.0
   size = params.get('model_size', 200)
   state_size = params.get('state_size', 30)
   model = params.get('model', 'rssm')
@@ -161,9 +165,9 @@ def _training_schedule(config, params):
 
 def _define_optimizers(config, params):
   optimizers = tools.AttrDict(_unlocked=True)
-  gradient_heads = params.get('gradient_heads', ['image', 'reward'])
-  assert all(head in config.heads for head in gradient_heads)
-  diagnostics = r'.*/head_(?!{})[a-z]+/.*'.format('|'.join(gradient_heads))
+  config.gradient_heads = params.get('gradient_heads', ['image', 'reward'])
+  assert all(head in config.heads for head in config.gradient_heads)
+  diagnostics = r'.*/head_(?!{})[a-z]+/.*'.format('|'.join(config.gradient_heads))
   kwargs = dict(
       optimizer_cls=functools.partial(tf.train.AdamOptimizer, epsilon=1e-4),
       learning_rate=params.get('learning_rate', 1e-3),
@@ -174,7 +178,7 @@ def _define_optimizers(config, params):
   for name in config.heads:
     assert config.zero_step_losses.get(name), name
     # Diagnostic heads use separate optimizers to not interfere with the model.
-    if name in gradient_heads:
+    if name in config.gradient_heads:
       continue
     optimizers[name] = functools.partial(
         tools.CustomOptimizer, include=r'.*/head_{}/.*'.format(name), **kwargs)
