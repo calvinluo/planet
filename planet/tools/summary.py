@@ -164,7 +164,7 @@ def prediction_summaries(dists, data, state, name='state'):
     # Predictions.
     log_probs = {}
     for key, dist in dists.items():
-      if key in ('image',):
+      if key in ('image', 'embedding',):
         continue
       # We only look at the first example in the batch.
       log_prob = dist.log_prob(data[key])[0]
