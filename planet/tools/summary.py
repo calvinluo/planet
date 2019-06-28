@@ -119,7 +119,7 @@ def log_prob_summaries(dists, obs, mask, name='log_prob'):
   summaries = []
   with tf.variable_scope(name):
     for key, dist in dists.items():
-      log_probs = dist.log_prob(obs[key])
+      log_probs = dist.log_prob(obs[key][:,1:])
       log_prob = tf.reduce_mean(masklib.mask(log_probs, mask))
       summaries.append(tf.summary.scalar(key, log_prob))
   return summaries
@@ -130,7 +130,7 @@ def image_summaries(dist, target, name='image', max_batch=10):
   with tf.variable_scope(name):
     empty_frame = 0 * target[:max_batch, :1]
     image = dist.mode()[:max_batch]
-    target = target[:max_batch]
+    target = target[:max_batch][:,1:]
     change = tf.concat([empty_frame, image[:, 1:] - image[:, :-1]], 1)
     error = image - target
     summaries.append(image_strip_summary.image_strip_summary(
@@ -167,9 +167,9 @@ def prediction_summaries(dists, data, state, name='state'):
       if key in ('image', 'embedding',):
         continue
       # We only look at the first example in the batch.
-      log_prob = dist.log_prob(data[key])[0]
+      log_prob = dist.log_prob(data[key][:,1:])[0]
       prediction = dist.mode()[0]
-      truth = data[key][0]
+      truth = data[key][:,1:][0]
       plot_name = key
       # Ensure that there is a feature dimension.
       if prediction.shape.ndims == 1:

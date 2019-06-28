@@ -26,6 +26,7 @@ import tensorflow as tf
 from planet import control
 from planet import tools
 from planet.training import trainer as trainer_
+import sys
 
 
 def set_up_logging():
@@ -184,6 +185,11 @@ def compute_losses(
     loss_scales, cell, heads, step, target, prior, posterior, mask,
     config, free_nats=None, debug=False):
   raw_features = cell.features_from_state(posterior)
+  #raw_features_with_velocity = tf.concat([raw_features[:,1:,:,:], raw_features[:,:-1,:,:]], -1)
+  raw_features = tf.concat([raw_features[:,1:], raw_features[:,1:] - raw_features[:,:-1]], -1)
+  #print_op = tf.print("Debug output:", raw_features_with_velocity, " and the shape is: ", raw_features_with_velocity.shape, output_stream=sys.stdout)
+  #with tf.control_dependencies([print_op]):
+  #  raw_features = tf.identity(raw_features)
   losses = {}
   for key, scale in loss_scales.items():
     # Features tensor is of shape (batch, time, os_distance, features).
@@ -207,7 +213,7 @@ def compute_losses(
       loss = tf.reduce_sum(loss, 1) / tf.reduce_sum(tf.to_float(mask), 1)
     elif key in heads:
       output = heads[key](features)
-      loss = -tools.mask(output.log_prob(target[key]), mask)
+      loss = -tools.mask(output.log_prob(target[key][:,1:]), mask[:,1:])
     else:
       message = "Loss scale references unknown head '{}'."
       raise KeyError(message.format(key))

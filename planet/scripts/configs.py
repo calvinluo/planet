@@ -225,7 +225,10 @@ def _active_collection(config, params):
 
 def _define_simulation(task, config, params, horizon, batch_size):
   def objective(state, graph):
-    return graph.heads['reward'](graph.cell.features_from_state(state)).mean()
+    raw_features = graph.cell.features_from_state(state)
+    raw_features = tf.concat([raw_features[:,1:], raw_features[:,1:] - raw_features[:,:-1]], -1)
+    #return graph.heads['reward'](graph.cell.features_from_state(state)).mean()
+    return graph.heads['reward'](raw_features).mean()
   planner = functools.partial(
       control.planning.cross_entropy_method,
       amount=params.get('cem_amount', 1000),
