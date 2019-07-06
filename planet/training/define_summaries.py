@@ -64,6 +64,7 @@ def define_summaries(graph, config):
         graph.cell, prior, posterior, mask)
     with tf.variable_scope('prior'):
       prior_features = graph.cell.features_from_state(prior)
+      #prior_features = tf.concat([prior_features, prior_features], -1)
       prior_dists = {
           name: head(prior_features)
           for name, head in heads.items()}
@@ -72,6 +73,7 @@ def define_summaries(graph, config):
           prior_dists['image'], config.postprocess_fn(graph.obs['image']))
     with tf.variable_scope('posterior'):
       posterior_features = graph.cell.features_from_state(posterior)
+      #posterior_features = tf.concat([posterior_features, posterior_features], -1)
       posterior_dists = {
           name: head(posterior_features)
           for name, head in heads.items()}
@@ -84,6 +86,7 @@ def define_summaries(graph, config):
         graph.cell, graph.embedded, graph.prev_action,
         config.open_loop_context, config.debug)
     state_features = graph.cell.features_from_state(state)
+    #state_features = tf.concat([state_features, state_features], -1)
     state_dists = {name: head(state_features) for name, head in heads.items()}
     summaries += summary.log_prob_summaries(state_dists, graph.obs, mask)
     summaries += summary.image_summaries(

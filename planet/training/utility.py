@@ -205,6 +205,22 @@ def compute_losses(
           'stddev': tf.ones_like(prior['stddev'])}
       loss = cell.divergence_from_states(posterior, global_prior, mask)
       loss = tf.reduce_sum(loss, 1) / tf.reduce_sum(tf.to_float(mask), 1)
+    elif key == 'pve':
+      if config.pve_source == 'head':
+        positions = heads.pve(features).mode()
+      elif config.pve_source == 'gru':
+        positions = posterior['belief']
+      elif config.pve_source == 'obs':
+        positions = target['embedding']
+        #enable embedding head, for 1 step prediction
+      else:
+        raise NotImplementedError(config.pve_source)
+      
+      velocities = positions[:, 1:] - positions[:,:-1]
+      positions = positions[:,1:]
+      print("the pve is: ", positions)
+      #compute PVE loss
+      
     elif key in heads:
       output = heads[key](features)
       loss = -tools.mask(output.log_prob(target[key]), mask)

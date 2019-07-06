@@ -93,6 +93,16 @@ def _model_components(config, params):
         params.get('min_stddev', 1e-1))
   else:
     raise NotImplementedError("Unknown model '{}.".format(params.model))
+  pve = params.get('pve_source', None)
+  config.zero_step_losses.pve = 1.0
+  if pve == 'head':
+    config.pve_source = 'head'
+  elif pve == 'gru':
+    config.pve_source = 'pve_source'
+  elif pve == 'obs':
+    config.pve_source = 'obs'
+  else:
+    raise NotImplementedError("Unknown PVE Configuration'{}.".format(params.pve_source))
   return config
 
 
@@ -225,7 +235,9 @@ def _active_collection(config, params):
 
 def _define_simulation(task, config, params, horizon, batch_size):
   def objective(state, graph):
-    return graph.heads['reward'](graph.cell.features_from_state(state)).mean()
+    state_features = graph.cell.features_from_state(state)
+    #state_features = tf.concat([state_features, state_features], -1)
+    return graph.heads['reward'](state_features).mean()
   planner = functools.partial(
       control.planning.cross_entropy_method,
       amount=params.get('cem_amount', 1000),
