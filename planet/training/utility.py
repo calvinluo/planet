@@ -179,10 +179,37 @@ def train(model_fn, datasets, logdir, config):
   for score in trainer.iterate(config.max_steps):
     yield score
 
+def compute_pve_losses(positions, actions):
+    # compute robotic prior losses
+    velocities = positions[:, 1:] - positions[:, :-1]
+
+    # Variation Loss
+    transposed_positions = tf.transpose(positions, [1,2,3,0])
+    shuffled_positions = tf.transpose(tf.gather(transposed_positions, tf.random.shuffle(tf.range(tf.shape(transposed_positions)[0]))), [3,0,1,2])
+    shuffled_velocities = -1 * tf.norm(shuffled_positions[:, 1:] - shuffled_positions[:, :-1], axis=3)
+    variation = tf.reduce_mean(tf.math.exp(shuffled_velocities))
+
+    # Slowness Loss
+    slowness = tf.reduce_mean(tf.norm(velocities, axis=3)**2)
+
+    # Inertia Loss
+    acceleration = velocities[:, 1:] - velocities[:, :-1]
+    inertia = tf.reduce_mean(tf.norm(acceleration, axis=3)**2)
+
+    # Conservation Loss
+    magnitude_change = tf.norm(velocities, axis=3)[:, 1:] - tf.norm(velocities, axis=3)[:, :-1]
+    conservation = tf.reduce_mean(magnitude_change**2)
+
+    # Controlability Loss
+    accel_actions = actions[:, 2:]
+    controlability = velocities
+
+    loss = variation + slowness + 0.1 * inertia + 0.2 * conservation# + controlability
+    return loss
 
 def compute_losses(
     loss_scales, cell, heads, step, target, prior, posterior, mask,
-    config, free_nats=None, debug=False):
+    config, obs, free_nats=None, debug=False):
   raw_features = cell.features_from_state(posterior)
   losses = {}
   for key, scale in loss_scales.items():
@@ -207,7 +234,7 @@ def compute_losses(
       loss = tf.reduce_sum(loss, 1) / tf.reduce_sum(tf.to_float(mask), 1)
     elif key == 'pve':
       if config.pve_source == 'head':
-        positions = heads.pve(features).mode()
+        positions = heads['pve'](features).mode()
       elif config.pve_source == 'gru':
         positions = posterior['belief']
       elif config.pve_source == 'obs':
@@ -215,11 +242,7 @@ def compute_losses(
         #enable embedding head, for 1 step prediction
       else:
         raise NotImplementedError(config.pve_source)
-      
-      velocities = positions[:, 1:] - positions[:,:-1]
-      positions = positions[:,1:]
-      print("the pve is: ", positions)
-      #compute PVE loss
+      loss = compute_pve_losses(positions, obs['action']) 
       
     elif key in heads:
       output = heads[key](features)
@@ -228,6 +251,8 @@ def compute_losses(
       message = "Loss scale references unknown head '{}'."
       raise KeyError(message.format(key))
     # Average over the batch and normalize by the maximum chunk length.
+    print("loss shape is: ", loss, " and key is: ", key)
+    input('asdf')
     loss = tf.reduce_mean(loss)
     losses[key] = tf.check_numerics(loss, key) if debug else loss
   return losses

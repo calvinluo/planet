@@ -97,10 +97,13 @@ def _model_components(config, params):
   config.zero_step_losses.pve = 1.0
   if pve == 'head':
     config.pve_source = 'head'
+    config.heads.pve = networks.feed_forward
   elif pve == 'gru':
-    config.pve_source = 'pve_source'
+    config.pve_source = 'gru'
   elif pve == 'obs':
     config.pve_source = 'obs'
+    config.heads.embedding = networks.feed_forward
+    config.zero_step_losses.embedding = 1.0
   else:
     raise NotImplementedError("Unknown PVE Configuration'{}.".format(params.pve_source))
   return config
