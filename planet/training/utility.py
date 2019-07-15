@@ -255,7 +255,11 @@ def compute_objectives(posterior, prior, target, graph, config):
       acc_normalized = acceleration - acc_mean
       expanded = tf.matmul(tf.expand_dims(action_normalized, axis=-1), tf.expand_dims(acc_normalized, axis=-2))
       controlability = tf.math.exp(-tf.reduce_mean(expanded))
+      # Alternate Controlability Loss // mean calculated over batch
+      # action_normalized = acc_actions - tf.reduce_mean(tf.reshape(acc_actions, [-1, acc_actions.shape[-1]]), axis=0)
+      # acc_normalized = acceleration - tf.reduce_mean(tf.reshape(acceleration, [-1, acceleration.shape[-1]]), axis=0)
 
+      # Magic numbers for loss scales, fix later
       loss = variation + slowness + 0.001 * inertia + 0.005 * conservation + 0.5 * controlability
 
       objectives.append(Objective(name, loss - logprob, min, include, exclude))

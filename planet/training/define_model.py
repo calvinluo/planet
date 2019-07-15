@@ -47,6 +47,7 @@ def define_model(data, trainer, config):
     elif key == 'action_target':
       kwargs['data_shape'] = data['action'].shape[2:].as_list()
     elif key == 'pve':
+      # Magic number, fix later
       kwargs['data_shape'] = [50]
     heads[key] = tf.make_template(name, head, **kwargs)
     heads[key](dummy_features)  # Initialize weights.

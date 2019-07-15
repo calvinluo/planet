@@ -33,6 +33,7 @@ def encoder(obs, trainable=True, pve_output=False):
   hidden = tf.layers.conv2d(hidden, 256, 4, **kwargs)
   hidden = tf.layers.flatten(hidden)
   if pve_output:
+    # Magic number for output size, fix later
     hidden = tf.layers.dense(hidden, 50, None)
     assert hidden.shape[1:].as_list() == [50], hidden.shape.as_list()
   else:
