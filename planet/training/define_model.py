@@ -37,10 +37,6 @@ def define_model(data, trainer, config):
   cell = config.cell()
   kwargs = dict(create_scope_now_=True)
   encoder = tf.make_template('encoder', config.encoder, **kwargs)
-  embedded = encoder(data)
-  with tf.control_dependencies(dependencies):
-    embedded = tf.identity(embedded)
-  data['embedding'] = embedded
   heads = tools.AttrDict(_unlocked=True)
   dummy_features = cell.features_from_state(cell.zero_state(1, tf.float32))
   for key, head in config.heads.items():
@@ -50,10 +46,17 @@ def define_model(data, trainer, config):
       kwargs['data_shape'] = data[key].shape[2:].as_list()
     elif key == 'action_target':
       kwargs['data_shape'] = data['action'].shape[2:].as_list()
+    elif key == 'pve':
+      kwargs['data_shape'] = [50]
     heads[key] = tf.make_template(name, head, **kwargs)
     heads[key](dummy_features)  # Initialize weights.
 
   # Apply and optimize model.
+  embedded = encoder(data)
+  if config.pve_obs:
+    data['pve'] = embedded
+  with tf.control_dependencies(dependencies):
+    embedded = tf.identity(embedded)
   graph = tools.AttrDict(locals())
   prior, posterior = tools.unroll.closed_loop(
       cell, embedded, data['action'], config.debug)

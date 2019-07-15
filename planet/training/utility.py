@@ -226,6 +226,40 @@ def compute_objectives(posterior, prior, target, graph, config):
         loss = tf.maximum(0.0, loss - float(config.free_nats))
       objectives.append(Objective('overshooting', loss, min, include, exclude))
 
+    elif name == 'pve':
+      if config.pve_obs:
+        # Do both - enforce pve on target['pve'], then logprob on heads['pve']
+        positions = target[name]
+        logprob = heads[name](features).log_prob(target[name])
+      else:
+        positions = heads[name](features).mode()
+        logprob = 0.0
+      velocities = positions[:, 1:] - positions[:, :-1]
+      acceleration = velocities[:, 1:] - velocities[:, :-1]
+      acc_actions = target['action'][:, 2:]
+    
+      # Variation Loss
+      batch_position_difference = positions[1:] - positions[:-1]
+      variation = tf.reduce_mean(tf.math.exp(-tf.norm(batch_position_difference, axis=-1)))
+      # Slowness Loss
+      slowness = tf.reduce_mean(tf.norm(velocities, axis=-1)**2)
+      # Inertia Loss
+      inertia = tf.reduce_mean(tf.norm(acceleration, axis=-1)**2)
+      # Conservation Loss
+      magnitude_change = tf.norm(velocities, axis=-1)[:, 1:] - tf.norm(velocities, axis=-1)[:, :-1]
+      conservation = tf.reduce_mean(magnitude_change**2)
+      # Controlability Loss
+      action_mean = tf.tile(tf.expand_dims(tf.reduce_mean(acc_actions, axis=1), 1), [1, acc_actions.shape[1], 1])
+      acc_mean = tf.tile(tf.expand_dims(tf.reduce_mean(acceleration, axis=1), 1), [1, acceleration.shape[1], 1])
+      action_normalized = acc_actions - action_mean
+      acc_normalized = acceleration - acc_mean
+      expanded = tf.matmul(tf.expand_dims(action_normalized, axis=-1), tf.expand_dims(acc_normalized, axis=-2))
+      controlability = tf.math.exp(-tf.reduce_mean(expanded))
+
+      loss = variation + slowness + 0.001 * inertia + 0.005 * conservation + 0.5 * controlability
+
+      objectives.append(Objective(name, loss - logprob, min, include, exclude))
+
     else:
       logprob = heads[name](features).log_prob(target[name])
       objectives.append(Objective(name, logprob, max, include, exclude))

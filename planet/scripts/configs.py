@@ -40,6 +40,7 @@ ACTIVATIONS = {
 
 def default(config, params):
   config.debug = False
+  config.pve_obs = params.get('pve_obs', False)
   config.loss_scales = tools.AttrDict(_unlocked=True)
   config = _data_processing(config, params)
   config = _model_components(config, params)
@@ -116,15 +117,14 @@ def _model_components(config, params):
       activation=config.activation)
   config.encoder = tools.bind(
       network.encoder,
-      trainable=params.get('trainable_encoder', True))
+      trainable=params.get('trainable_encoder', True),
+      pve_output=params.get('pve_obs', False))
   config.decoder = network.decoder
   config.heads = tools.AttrDict(_unlocked=True)
   config.heads.image = config.decoder
-  if params.get('embedding_head', False):
-    config.heads.embedding = tools.bind(
-        config.head_network,
-        stop_gradient='embedding' not in config.gradient_heads)
-    config.loss_scales.embedding = 1.0
+  config.heads.pve = tools.bind(
+      config.head_network,
+      stop_gradient='pve' not in config.gradient_heads)
   size = params.get('model_size', 200)
   state_size = params.get('state_size', 30)
   model = params.get('model', 'rssm')

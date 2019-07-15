@@ -23,7 +23,7 @@ from tensorflow_probability import distributions as tfd
 from planet import tools
 
 
-def encoder(obs, trainable=True):
+def encoder(obs, trainable=True, pve_output=False):
   """Extract deterministic features from an observation."""
   kwargs = dict(strides=2, activation=tf.nn.relu, trainable=trainable)
   hidden = tf.reshape(obs['image'], [-1] + obs['image'].shape[2:].as_list())
@@ -32,7 +32,11 @@ def encoder(obs, trainable=True):
   hidden = tf.layers.conv2d(hidden, 128, 4, **kwargs)
   hidden = tf.layers.conv2d(hidden, 256, 4, **kwargs)
   hidden = tf.layers.flatten(hidden)
-  assert hidden.shape[1:].as_list() == [1024], hidden.shape.as_list()
+  if pve_output:
+    hidden = tf.layers.dense(hidden, 50, None)
+    assert hidden.shape[1:].as_list() == [50], hidden.shape.as_list()
+  else:
+    assert hidden.shape[1:].as_list() == [1024], hidden.shape.as_list()
   hidden = tf.reshape(hidden, tools.shape(obs['image'])[:2] + [
       np.prod(hidden.shape[1:].as_list())])
   return hidden
