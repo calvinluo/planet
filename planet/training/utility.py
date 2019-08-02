@@ -226,6 +226,15 @@ def compute_objectives(posterior, prior, target, graph, config):
         loss = tf.maximum(0.0, loss - float(config.free_nats))
       objectives.append(Objective('overshooting', loss, min, include, exclude))
 
+    elif name == 'pred_embed':
+      pred = heads[name](features).mode()
+      targ = tf.math.exp(tf.einsum('ijk,ijk->ij', pred, target['embedding']))
+      all_samples = targ
+      for i in range(1, target['embedding'].shape[1]):
+        all_samples += tf.math.exp(tf.einsum('ijk,ijk->ij', pred, tf.roll(target['embedding'], i, 1)))
+      loss = tf.reduce_mean(tf.math.log(tf.math.divide(targ, all_samples)))
+      objectives.append(Objective(name, loss, max, include, exclude))
+
     else:
       logprob = heads[name](features).log_prob(target[name])
       objectives.append(Objective(name, logprob, max, include, exclude))

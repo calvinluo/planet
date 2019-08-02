@@ -50,6 +50,8 @@ def define_model(data, trainer, config):
       kwargs['data_shape'] = data[key].shape[2:].as_list()
     elif key == 'action_target':
       kwargs['data_shape'] = data['action'].shape[2:].as_list()
+    elif key == 'pred_embed':
+      kwargs['data_shape'] = data['embedding'].shape[2:].as_list()
     heads[key] = tf.make_template(name, head, **kwargs)
     heads[key](dummy_features)  # Initialize weights.
 

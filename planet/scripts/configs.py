@@ -125,6 +125,10 @@ def _model_components(config, params):
         config.head_network,
         stop_gradient='embedding' not in config.gradient_heads)
     config.loss_scales.embedding = 1.0
+  config.heads.pred_embed = tools.bind(
+        config.head_network,
+        stop_gradient='pred_embed' not in config.gradient_heads)
+  config.loss_scales.pred_embed = 1.0
   size = params.get('model_size', 200)
   state_size = params.get('state_size', 30)
   model = params.get('model', 'rssm')
