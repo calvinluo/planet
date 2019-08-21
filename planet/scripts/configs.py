@@ -78,7 +78,7 @@ def debug(config, params):
 
 
 def _data_processing(config, params):
-  config.batch_shape = params.get('batch_shape', (5, 5))
+  config.batch_shape = params.get('batch_shape', (50, 50))
   config.num_chunks = params.get('num_chunks', 1)
   image_bits = params.get('image_bits', 5)
   config.preprocess_fn = tools.bind(
